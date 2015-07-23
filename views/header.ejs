@@ -1,0 +1,40 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+<title><%= title %> - 个人博客</title>
+<link rel='stylesheet' href='/stylesheets/bootstrap.css' />
+<link rel='stylesheet' href='/stylesheets/style.css' />
+<link href="stylesheets/bootstrap-responsive.css" rel="stylesheet">
+<style type="text/css">
+body {
+padding-top: 0px;
+padding-bottom: 40px;
+padding-left: 50px;
+padding-right: 50px;
+}
+</style>
+
+  </head>
+  <body>
+<header>
+<h5><%= title %></h5>
+</header>
+
+<nav style=‘align：right’>
+<span><a title="主页" href="/">Home</a></span>
+<% if (user) { %>
+  <span><a title="发表" href="/post">Post</a></span>
+  <span><a title="登出" href="/logout">Logout</a></span>
+<% } else { %>
+  <span><a title="登录" href="/login">Login</a></span>
+  <span><a title="注册" href="/reg">Register</a></span>
+<% } %>
+</nav>
+<article>
+<% if (success) { %>
+  <div><%= success %></div>
+<% } %>
+<% if (error) { %>
+  <div><%= error %> </div>
+<% } %>
