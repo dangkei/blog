@@ -7,7 +7,7 @@ var router = express.Router();
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-     Post.get(null,function(err,posts){
+     Post.getAll(null,function(err,posts){
       if(err){
         posts = [];
       } 
@@ -100,7 +100,7 @@ router.post('/login',checkNotLogin,function(req,res){
 });
 //route reg
 router.get('/post',checkLogin,function(req,res,next){
-     Post.get(null,function(err,posts){
+     Post.getAll(null,function(err,posts){
       if(err){
         posts = [];
       } 
@@ -145,6 +145,91 @@ router.post('/upload', checkLogin,function (req, res) {
   app.locals.success = '文件上传成功!';
   res.redirect('/upload');
 });
+
+router.get('/u/:name', function (req, res) {
+  //检查用户是否存在
+  User.get(req.params.name, function (err, user) {
+    if (!user) {
+      app.locals.error = '用户不存在!'; 
+      return res.redirect('/');//用户不存在则跳转到主页
+    }
+    //查询并返回该用户的所有文章
+    Post.getAll(user.name, function (err, posts) {
+      if (err) {
+        req.flash('error', err); 
+        return res.redirect('/');
+      } 
+      res.render('user', {
+        title: user.name,
+        posts: posts,
+        user : app.locals.user,
+        success : app.locals.success,
+        error : app.locals.error
+      });
+    });
+  }); 
+});
+
+router.get('/u/:name/:day/:title', function (req, res) {
+  Post.getOne(req.params.name, req.params.day, req.params.title, function (err, post) {
+    if (err) {
+      rapp.locals.error = err; 
+      return res.redirect('/');
+    }
+    res.render('article', {
+      title: req.params.title,
+      post: post,
+      user: app.locals.user,
+      success: app.locals.success,
+      error: app.locals.error
+    });
+  });
+});
+
+router.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
+  var currentUser = app.locals.user;
+  Post.edit(currentUser.name, req.params.day, req.params.title, function (err, post) {
+    if (err) {
+      req.flash('error', err); 
+      return res.redirect('back');
+    }
+    res.render('edit', {
+      title: '编辑',
+      post: post,
+      user: req.session.user,
+      success: app.locals.success,
+      error: app.locals.error
+    });
+  });
+});
+
+
+router.post('/edit/:name/:day/:title',checkLogin, function (req, res) {
+  var currentUser = req.session.user;
+  Post.update(currentUser.name, req.params.day, req.params.title, req.body.post, function (err) {
+    var url = encodeURI('/u/' + req.params.name + '/' + req.params.day + '/' + req.params.title);
+    if (err) {
+      app.locals.error =  err; 
+      return res.redirect(url);//出错！返回文章页
+    }
+    app.locals.success='修改成功!';
+    res.redirect(url);//成功！返回文章页
+  });
+});
+
+router.get('/remove/:name/:day/:title',checkLogin, function (req, res) {
+  var currentUser = app.locals.user;
+  Post.remove(currentUser.name, req.params.day, req.params.title, function (err) {
+    if (err) {
+      app.locals.error = err; 
+      return res.redirect('back');
+    }
+    app.locals.success= '删除成功!';
+    res.redirect('/');
+  });
+});
+
+
 
   function checkLogin(req, res, next) {
     if (!app.locals.user) {
