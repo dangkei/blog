@@ -1,6 +1,7 @@
 var crypto = require('crypto'),
     User = require('../models/user.js'),
-    Post = require('../models/post.js');
+    Post = require('../models/post.js'),
+    Comment = require('../models/comment.js');
 var express = require('express');
 var app = express();
 var router = express.Router();
@@ -146,7 +147,7 @@ router.post('/upload', checkLogin,function (req, res) {
   res.redirect('/upload');
 });
 
-router.get('/u/:name', function (req, res) {
+router.get('/u/:name', checkLogin, function (req, res) {
   //检查用户是否存在
   User.get(req.params.name, function (err, user) {
     if (!user) {
@@ -186,6 +187,30 @@ router.get('/u/:name/:day/:title', function (req, res) {
   });
 });
 
+router.post('/u/:name/:day/:title', function (req, res) {
+  var date = new Date(),
+      time = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + " " + 
+             date.getHours() + ":" + (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes());
+  var comment = {
+      name: req.body.name,
+      email: req.body.email,
+      website: req.body.website,
+      time: time,
+      content: req.body.content
+  };
+  var newComment = new Comment(req.params.name, req.params.day, req.params.title, comment);
+  newComment.save(function (err) {
+    if (err) {
+      app.locals.error = err; 
+      return res.redirect('back');
+    }
+    app.locals.success = '留言成功!';
+    res.redirect('back');
+  });
+});
+
+
+
 router.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
   var currentUser = app.locals.user;
   Post.edit(currentUser.name, req.params.day, req.params.title, function (err, post) {
@@ -196,7 +221,7 @@ router.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
     res.render('edit', {
       title: '编辑',
       post: post,
-      user: req.session.user,
+      user: app.locals.user,
       success: app.locals.success,
       error: app.locals.error
     });
@@ -205,7 +230,7 @@ router.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
 
 
 router.post('/edit/:name/:day/:title',checkLogin, function (req, res) {
-  var currentUser = req.session.user;
+  var currentUser = app.locals.user;
   Post.update(currentUser.name, req.params.day, req.params.title, req.body.post, function (err) {
     var url = encodeURI('/u/' + req.params.name + '/' + req.params.day + '/' + req.params.title);
     if (err) {
@@ -247,6 +272,14 @@ router.get('/remove/:name/:day/:title',checkLogin, function (req, res) {
     next();
   }
 
+
+function setError(err){
+  app.locals.error = err;
+}
+
+function setStatus(stat){
+  app.locals.status = stat;
+}
 
 module.exports = router;
 // module.exports = function(app){

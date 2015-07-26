@@ -12,6 +12,8 @@ var settings = require('./settings');
 var app = express();
 var multer  = require('multer'); //文件上传功能中间件
 
+//app.use(express.session());
+
 app.use(multer({
   dest: './public/images',
   rename: function (fieldname, filename) {
@@ -43,10 +45,10 @@ app.use(session({
     db: settings.db,
     host: settings.host,
     port: settings.port
-  })
+  }),
+  resave:false,
+  saveUninitialized:true
 }));
-
-
 
 //app.use('/users', users);
 
