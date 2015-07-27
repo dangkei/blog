@@ -1,4 +1,5 @@
 <br />
+<div class="well jumbotron">
 <% if(post.comments){
   post.comments.forEach(function (comment, index) { %>
   <p><a href="<%= comment.website %>"><%= comment.name %></a>
@@ -6,8 +7,8 @@
   <p><%- comment.content %></p>
 <% }) } 
 %>
+</div>
 <div class="well jumbotron">
-
 <form method="post">
 <% if (user) { %>
   姓名：<input type="text" name="name" value="<%= user.name %>" /><br />

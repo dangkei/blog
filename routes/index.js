@@ -1,27 +1,33 @@
 var crypto = require('crypto'),
+    //fs = require('fs'),
     User = require('../models/user.js'),
     Post = require('../models/post.js'),
     Comment = require('../models/comment.js');
-var express = require('express');
-var app = express();
-var router = express.Router();
+
+module.exports = function(app){
 
 /* GET home page. */
-router.get('/', function(req, res, next) {
-     Post.getAll(null,function(err,posts){
+app.get('/', function(req, res) {
+    var page = req.query.p? parseInt(req.query.p) :1;
+     Post.getTen(null,page,function(err,posts,total){
       if(err){
         posts = [];
       } 
-      res.render('index', { title: '博客首页',
-      user: app.locals.user,
-      posts : posts,
-      success: app.locals.success,
-      error: app.locals.error });
+      res.render('index', { 
+        title: '博客首页',
+        user: app.locals.user,
+        posts : posts,
+        page:page,
+        isFirstPage:(page-1) ==0,
+        isLastPage:((page-1)*10 + posts.length) == total,
+        success: app.locals.success,
+        error: app.locals.error 
+      });
     });
 });
 
 //route reg
-router.get('/reg',checkNotLogin,function(req,res,next){
+app.get('/reg',checkNotLogin,function(req,res,next){
   res.render('reg',{
   	title:'用户注册',
   	user: app.locals.user,
@@ -29,7 +35,7 @@ router.get('/reg',checkNotLogin,function(req,res,next){
     error: app.locals.error});
 });
 
-router.post('/reg',checkNotLogin,function(req,res){
+app.post('/reg',checkNotLogin,function(req,res){
     var name = req.body.username,
     password = req.body.password,
     password_re = req.body['password-repeat'];
@@ -63,14 +69,14 @@ router.post('/reg',checkNotLogin,function(req,res){
         app.locals.error= err;
         return res.redirect('/reg');//注册失败返回主册页
       }
-      req.session.user = user;//用户信息存入 session
+      app.locals.user = user;//用户信息存入 session
       app.locals.success= '注册成功!';
       res.redirect('/');//注册成功后返回主页
     });
   });
 });
 //route reg
-router.get('/login',checkNotLogin,function(req,res,next){
+app.get('/login',checkNotLogin,function(req,res,next){
   res.render('login',{
   		title:'用户登录',
   		user: app.locals.user,
@@ -78,7 +84,7 @@ router.get('/login',checkNotLogin,function(req,res,next){
       error: app.locals.error});
 });
 
-router.post('/login',checkNotLogin,function(req,res){
+app.post('/login',checkNotLogin,function(req,res){
 //生成密码的 md5 值
   var md5 = crypto.createHash('md5'),
       password = md5.update(req.body.password).digest('hex');
@@ -100,8 +106,9 @@ router.post('/login',checkNotLogin,function(req,res){
   });
 });
 //route reg
-router.get('/post',checkLogin,function(req,res,next){
-     Post.getAll(null,function(err,posts){
+app.get('/post',checkLogin,function(req,res,next){
+     var page = req.query.p? parseInt(req.query.p):1;
+     Post.getTen(null,page,function(err,posts){
       if(err){
         posts = [];
       } 
@@ -113,7 +120,7 @@ router.get('/post',checkLogin,function(req,res,next){
     });
 });
 
-router.post('/post',checkLogin,function(req,res){
+app.post('/post',checkLogin,function(req,res){
     var currentUser = app.locals.user,
         post = new Post(currentUser.name, req.body.title, req.body.post);
     post.save(function (err) {
@@ -126,14 +133,14 @@ router.post('/post',checkLogin,function(req,res){
     });
 });
 //route logout
-router.get('/logout',checkLogin,function(req,res,next){
+app.get('/logout',checkLogin,function(req,res,next){
   app.locals.user = null;
   app.locals.success = '登出成功';
   res.redirect('/');
 });
 
 
-router.get('/upload',checkLogin, function (req, res) {
+app.get('/upload',checkLogin, function (req, res) {
   res.render('upload', {
     title: '文件上传',
     user: app.locals.user,
@@ -142,12 +149,27 @@ router.get('/upload',checkLogin, function (req, res) {
   });
 });
 
-router.post('/upload', checkLogin,function (req, res) {
+app.post('/upload', checkLogin,function (req, res) {
   app.locals.success = '文件上传成功!';
   res.redirect('/upload');
 });
-
-router.get('/u/:name', checkLogin, function (req, res) {
+app.get('/archive', function (req, res) {
+  Post.getArchive(function (err, posts) {
+    if (err) {
+      req.flash('error', err); 
+      return res.redirect('/');
+    }
+    res.render('archive', {
+      title: '存档',
+      posts: posts,
+      user: app.locals.user,
+      success: app.locals.success,
+      error: app.locals.error
+    });
+  });
+});
+app.get('/u/:name', function (req, res) {
+  var page = req.query.p? parseInt(req.query.p):1;
   //检查用户是否存在
   User.get(req.params.name, function (err, user) {
     if (!user) {
@@ -155,14 +177,18 @@ router.get('/u/:name', checkLogin, function (req, res) {
       return res.redirect('/');//用户不存在则跳转到主页
     }
     //查询并返回该用户的所有文章
-    Post.getAll(user.name, function (err, posts) {
+    var number = 8;
+    Post.getN(user.name,page, number, function (err, posts,total) {
       if (err) {
-        req.flash('error', err); 
+        app.locals.error = err ; 
         return res.redirect('/');
       } 
       res.render('user', {
         title: user.name,
         posts: posts,
+        page:page,
+        isFirstPage:(page-1) ==0,
+        isLastPage:((page-1)*number + posts.length) == total,
         user : app.locals.user,
         success : app.locals.success,
         error : app.locals.error
@@ -171,7 +197,7 @@ router.get('/u/:name', checkLogin, function (req, res) {
   }); 
 });
 
-router.get('/u/:name/:day/:title', function (req, res) {
+app.get('/u/:name/:day/:title', function (req, res) {
   Post.getOne(req.params.name, req.params.day, req.params.title, function (err, post) {
     if (err) {
       rapp.locals.error = err; 
@@ -187,7 +213,7 @@ router.get('/u/:name/:day/:title', function (req, res) {
   });
 });
 
-router.post('/u/:name/:day/:title', function (req, res) {
+app.post('/u/:name/:day/:title', function (req, res) {
   var date = new Date(),
       time = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + " " + 
              date.getHours() + ":" + (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes());
@@ -211,7 +237,7 @@ router.post('/u/:name/:day/:title', function (req, res) {
 
 
 
-router.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
+app.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
   var currentUser = app.locals.user;
   Post.edit(currentUser.name, req.params.day, req.params.title, function (err, post) {
     if (err) {
@@ -229,7 +255,7 @@ router.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
 });
 
 
-router.post('/edit/:name/:day/:title',checkLogin, function (req, res) {
+app.post('/edit/:name/:day/:title',checkLogin, function (req, res) {
   var currentUser = app.locals.user;
   Post.update(currentUser.name, req.params.day, req.params.title, req.body.post, function (err) {
     var url = encodeURI('/u/' + req.params.name + '/' + req.params.day + '/' + req.params.title);
@@ -242,7 +268,7 @@ router.post('/edit/:name/:day/:title',checkLogin, function (req, res) {
   });
 });
 
-router.get('/remove/:name/:day/:title',checkLogin, function (req, res) {
+app.get('/remove/:name/:day/:title',checkLogin, function (req, res) {
   var currentUser = app.locals.user;
   Post.remove(currentUser.name, req.params.day, req.params.title, function (err) {
     if (err) {
@@ -257,6 +283,9 @@ router.get('/remove/:name/:day/:title',checkLogin, function (req, res) {
 
 
   function checkLogin(req, res, next) {
+    
+    console.log(app.locals.user);
+
     if (!app.locals.user) {
       app.locals.error = '未登录!'; 
       res.redirect('/login');
@@ -281,7 +310,8 @@ function setStatus(stat){
   app.locals.status = stat;
 }
 
-module.exports = router;
+}
+
 // module.exports = function(app){
 // 	app.get('/', function(req, res, next) {
 // 	  res.render('index', { title: 'Express' });

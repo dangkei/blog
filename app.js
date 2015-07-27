@@ -1,27 +1,19 @@
-var express = require('express');
-var cookieParser = require('cookie-parser');
 var path = require('path');
+
+var express = require('express');
 var favicon = require('serve-favicon');
 var logger = require('morgan');
+var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var session = require('express-session');
 var MongoStore = require('connect-mongo')(session);
 var flash = require('connect-flash');
-
-var settings = require('./settings');
-var app = express();
 var multer  = require('multer'); //文件上传功能中间件
 
-//app.use(express.session());
+var routers = require('./routes/index');
+var settings = require('./settings');
 
-app.use(multer({
-  dest: './public/images',
-  rename: function (fieldname, filename) {
-    return filename;
-  }
-}));
-
-var routes = require('./routes/index');
+var app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -32,9 +24,18 @@ app.set('view engine', 'ejs');
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+app.use(multer({
+  dest: './public/images',
+  rename: function (fieldname, filename) {
+    return filename;
+  }
+}));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/', routes);
+
+
+//app.use('/', routes);
+routers(app);
 //app.use(express.session());
 //store session database
 app.use(session({
@@ -50,14 +51,16 @@ app.use(session({
   saveUninitialized:true
 }));
 
-//app.use('/users', users);
+
+app.use(flash());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  var err = new Error('Not Found');
-  err.status = 404;
-  next(err);
-});
+// app.use(function(req, res, next) {
+//   var err = new Error('Not Found');
+//   err.status = 404;
+//   next(err);
+// });
 
 // error handlers
 
