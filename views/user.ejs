@@ -6,5 +6,6 @@
   <h6><a href="/u/<%= post.name %>/<%= post.time.day %>/<%= post.title %>"><%= post.title %></a>  ：<%= post.time.minute %></h6>
   </p>
   <p><%- post.post %></p>
+  <p class="info">阅读：<%= post.pv %> | 评论：<%= post.comments.length %></p>
 <% }) %>
 <%- include footer %>

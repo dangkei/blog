@@ -5,7 +5,7 @@
 <title><%= title %> - 个人博客</title>
 <link rel='stylesheet' href='/stylesheets/bootstrap.css' />
 <link rel='stylesheet' href='/stylesheets/style.css' />
-<link href="stylesheets/bootstrap-responsive.css" rel="stylesheet">
+<link rel="stylesheet" href="/stylesheets/bootstrap-responsive.css">
 <style type="text/css">
 body {
 padding-top: 0px;
@@ -25,34 +25,26 @@ nav.right{
 
   </head>
   <body>
-<div class="meny">
-  <h2><%= title %></h2>
-  <ul>
-    <li><a title="主页" class="btn-small" href='/'>首页</a></li>
-    <li><a title="存档" class="btn-small" href='/archive'>存档</a></li>
-    <% if (user) { %>
-  
-  <li><a title="上传" class="btn-small" href="/upload">上传</a></li>
-  <li><a title="发表" class="btn-small" href="/post">发表</a></li>
-  <li><a title="登出" class="btn-small" href="/logout">登出</a></li>
-  <li><a href="u/<%= user.name %>"><%= user.name %></a></li>
+<div class="navbar navbar-default">
+<ul class='nav navbar-nav'>
+    <li class='navbar-text'><a title="主页"  href="/">首页</a></li>
+    <li class='navbar-text'><a href="/archive">博文</a></li>
+<% if (user) { %>
+    <li class='navbar-text'><a title="上传"  href="/upload">上传</a></li>
+    <li class='navbar-text'><a title="发表"  href="/post">发表</a></li>
+    <li class='navbar-text'><a title="登出"  href="/logout">登出</a></li>
 <% } else { %>
-<li><a class="btn-small" href="/login">登录</a></li>
-<li><a class="btn-small" href="/reg">立即注册</a></li>
+    <li class='navbar-text'><a  href="/login">登录</a></li>
+    <li class='navbar-text'><a  href="/reg">立即注册</a></li>
 <% } %>
-
+</ul>
 </div>
-
-<div class="meny-arrow"></div>
-<div class="contents">
-
-<header>
-</header>
-<article>
 <% if (success) { %>
   <div><%= success %></div>
 <% } %>
 <% if (error) { %>
   <div><%= error %> </div>
 <% } %>
-
+<span><form action="/search" method="GET"><input type="text" name="keyword" placeholder="SEARCH" class="search" /></form></span>
+<br/>
+<article>

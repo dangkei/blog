@@ -33,9 +33,24 @@ app.use(multer({
 }));
 app.use(cookieParser());
 
+app.use(session({
+  secret: settings.cookieSecret,
+  resave:false,
+  saveUninitialized:true
+}));
 
+app.use(flash());
+app.use(express.static(path.join(__dirname, 'public')));
 //app.use('/', routes);
+
+
 routers(app);
+app.use(function (req, res, next) {
+    res.locals.error = req.flash('error');
+    res.locals.success = req.flash('success');
+    res.locals.user = req.session.user;
+    next();
+});
 //app.use(express.session());
 //store session database
 app.use(session({
@@ -47,20 +62,16 @@ app.use(session({
     host: settings.host,
     port: settings.port
   }),
-  resave:false,
+  resave:true,
   saveUninitialized:true
 }));
 
-
-app.use(flash());
-app.use(express.static(path.join(__dirname, 'public')));
-
-// catch 404 and forward to error handler
-// app.use(function(req, res, next) {
-//   var err = new Error('Not Found');
-//   err.status = 404;
-//   next(err);
-// });
+//catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  var err = new Error('Not Found');
+  err.status = 404;
+  next(err);
+});
 
 // error handlers
 
@@ -85,6 +96,4 @@ app.use(function(err, req, res, next) {
     error: {}
   });
 });
-
-
 module.exports = app;

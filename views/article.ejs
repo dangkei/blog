@@ -1,5 +1,7 @@
 <%- include header %>
+
 <p>
+<h4><%= post.title %></h4>
 <% if (user && (user.name == post.name)) { %>
   <span><a  class="btn btn-small" href="/edit/<%= post.name %>/<%= post.time.day %>/<%= post.title %>">编辑</a></span>
   <span><a  class="btn btn-small" href="/remove/<%= post.name %>/<%= post.time.day %>/<%= post.title %>">删除</a></span>
@@ -12,5 +14,6 @@
 <div class='well jumbotron'>
 <p><%= post.post %></p>
 </div>
+<p class="info">阅读：<%= post.pv %> | 评论：<%= post.comments.length %></p>
 <%- include comment %>
 <%- include footer %> 

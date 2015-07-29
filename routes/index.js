@@ -9,19 +9,19 @@ module.exports = function(app){
 /* GET home page. */
 app.get('/', function(req, res) {
     var page = req.query.p? parseInt(req.query.p) :1;
-     Post.getTen(null,page,function(err,posts,total){
+     Post.getN(null,page,2,function(err,posts,total){
       if(err){
         posts = [];
       } 
       res.render('index', { 
         title: '博客首页',
-        user: app.locals.user,
+        user: req.session.user,
         posts : posts,
         page:page,
         isFirstPage:(page-1) ==0,
         isLastPage:((page-1)*10 + posts.length) == total,
-        success: app.locals.success,
-        error: app.locals.error 
+        success: req.flash('success').toString(),
+        error: req.flash('error').toString() 
       });
     });
 });
@@ -30,9 +30,10 @@ app.get('/', function(req, res) {
 app.get('/reg',checkNotLogin,function(req,res,next){
   res.render('reg',{
   	title:'用户注册',
-  	user: app.locals.user,
-    success: app.locals.success,
-    error: app.locals.error});
+  	user: req.session.user,
+    success: req.flash('success').toString(),
+    error: req.flash('error').toString() 
+  });
 });
 
 app.post('/reg',checkNotLogin,function(req,res){
@@ -60,7 +61,7 @@ app.post('/reg',checkNotLogin,function(req,res){
       return res.redirect('/');
     }
     if (user) {
-      app.locals.error= '用户已存在!';
+      req.flash('error', '用户已存在!');
       return res.redirect('/reg');//返回注册页
     }
     //如果不存在则新增用户
@@ -69,8 +70,8 @@ app.post('/reg',checkNotLogin,function(req,res){
         app.locals.error= err;
         return res.redirect('/reg');//注册失败返回主册页
       }
-      app.locals.user = user;//用户信息存入 session
-      app.locals.success= '注册成功!';
+      req.session.user = user;//用户信息存入 session
+      req.locals.success= '注册成功!';
       res.redirect('/');//注册成功后返回主页
     });
   });
@@ -79,9 +80,10 @@ app.post('/reg',checkNotLogin,function(req,res){
 app.get('/login',checkNotLogin,function(req,res,next){
   res.render('login',{
   		title:'用户登录',
-  		user: app.locals.user,
-      success: app.locals.success,
-      error: app.locals.error});
+  		user: req.session.user,
+      success: req.flash('success').toString(),
+      error: req.flash('error').toString()
+    });
 });
 
 app.post('/login',checkNotLogin,function(req,res){
@@ -91,7 +93,7 @@ app.post('/login',checkNotLogin,function(req,res){
   //检查用户是否存在
   User.get(req.body.username, function (err, user) {
     if (!user) {
-      app.locals.error = '用户不存在!'; 
+      req.flash('error', '用户不存在!');
       return res.redirect('/login');//用户不存在则跳转到登录页
     }
     //检查密码是否一致
@@ -100,7 +102,7 @@ app.post('/login',checkNotLogin,function(req,res){
       return res.redirect('/login');//密码错误则跳转到登录页
     }
     //用户名密码都匹配后，将用户信息存入 session
-    app.locals.user = user;
+    req.session.user = user;
     app.locals.success= '登陆成功!';
     res.redirect('/');//登陆成功后跳转到主页
   });
@@ -113,16 +115,19 @@ app.get('/post',checkLogin,function(req,res,next){
         posts = [];
       } 
       res.render('post',{title:'发表文章',
-      user: app.locals.user,
+      user: req.session.user,
       posts: posts,
-      success: app.locals.success,
-      error: app.locals.error});
+      success: req.flash('success').toString(),
+      error: req.flash('error').toString()
+      });
     });
 });
 
 app.post('/post',checkLogin,function(req,res){
-    var currentUser = app.locals.user,
-        post = new Post(currentUser.name, req.body.title, req.body.post);
+    var currentUser = req.session.user,
+      tags = req.body.tag.split(","),
+      post = new Post(currentUser.name, req.body.title,tags,req.body.post);
+      console.log(tags);
     post.save(function (err) {
       if (err) {
         app.locals.error = err; 
@@ -134,7 +139,7 @@ app.post('/post',checkLogin,function(req,res){
 });
 //route logout
 app.get('/logout',checkLogin,function(req,res,next){
-  app.locals.user = null;
+  req.session.user = null;
   app.locals.success = '登出成功';
   res.redirect('/');
 });
@@ -143,7 +148,7 @@ app.get('/logout',checkLogin,function(req,res,next){
 app.get('/upload',checkLogin, function (req, res) {
   res.render('upload', {
     title: '文件上传',
-    user: app.locals.user,
+    user: req.session.user,
     success: app.locals.success,
     error: app.locals.error
   });
@@ -162,9 +167,24 @@ app.get('/archive', function (req, res) {
     res.render('archive', {
       title: '存档',
       posts: posts,
-      user: app.locals.user,
+      user: req.session.user,
       success: app.locals.success,
       error: app.locals.error
+    });
+  });
+});
+app.get('/search', function (req, res) {
+  Post.search(req.query.keyword, function (err, posts) {
+    if (err) {
+      req.flash('error', err); 
+      return res.redirect('/');
+    }
+    res.render('search', {
+      title: "SEARCH:" + req.query.keyword,
+      posts: posts,
+      user: req.session.user,
+      success: req.flash('success').toString(),
+      error: req.flash('error').toString()
     });
   });
 });
@@ -197,23 +217,24 @@ app.get('/u/:name', function (req, res) {
   }); 
 });
 
-app.get('/u/:name/:day/:title', function (req, res) {
-  Post.getOne(req.params.name, req.params.day, req.params.title, function (err, post) {
+app.get('/u/:name/:day/:Guid', function (req, res) {
+  Post.getOne(req.params.name, req.params.day, req.params.Guid, function (err, post) {
     if (err) {
       rapp.locals.error = err; 
       return res.redirect('/');
     }
     res.render('article', {
-      title: req.params.title,
+      Guid: post.Guid,
+      title: "文章",
       post: post,
-      user: app.locals.user,
+      user: req.session.user,
       success: app.locals.success,
       error: app.locals.error
     });
   });
 });
 
-app.post('/u/:name/:day/:title', function (req, res) {
+app.post('/u/:name/:day/:Guid', function (req, res) {
   var date = new Date(),
       time = date.getFullYear() + "-" + (date.getMonth() + 1) + "-" + date.getDate() + " " + 
              date.getHours() + ":" + (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes());
@@ -237,8 +258,8 @@ app.post('/u/:name/:day/:title', function (req, res) {
 
 
 
-app.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
-  var currentUser = app.locals.user;
+app.get('/edit/:name/:day/:Guid',checkLogin, function (req, res) {
+  var currentUser = req.session.user;
   Post.edit(currentUser.name, req.params.day, req.params.title, function (err, post) {
     if (err) {
       req.flash('error', err); 
@@ -247,7 +268,7 @@ app.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
     res.render('edit', {
       title: '编辑',
       post: post,
-      user: app.locals.user,
+      user: req.session.user,
       success: app.locals.success,
       error: app.locals.error
     });
@@ -255,8 +276,8 @@ app.get('/edit/:name/:day/:title',checkLogin, function (req, res) {
 });
 
 
-app.post('/edit/:name/:day/:title',checkLogin, function (req, res) {
-  var currentUser = app.locals.user;
+app.post('/edit/:name/:day/:Guid',checkLogin, function (req, res) {
+  var currentUser = req.session.user;
   Post.update(currentUser.name, req.params.day, req.params.title, req.body.post, function (err) {
     var url = encodeURI('/u/' + req.params.name + '/' + req.params.day + '/' + req.params.title);
     if (err) {
@@ -268,8 +289,8 @@ app.post('/edit/:name/:day/:title',checkLogin, function (req, res) {
   });
 });
 
-app.get('/remove/:name/:day/:title',checkLogin, function (req, res) {
-  var currentUser = app.locals.user;
+app.get('/remove/:name/:day/:Guid',checkLogin, function (req, res) {
+  var currentUser = req.session.user;
   Post.remove(currentUser.name, req.params.day, req.params.title, function (err) {
     if (err) {
       app.locals.error = err; 
@@ -281,12 +302,13 @@ app.get('/remove/:name/:day/:title',checkLogin, function (req, res) {
 });
 
 
+app.use(function (req, res) {
+  res.render("404");
+});
 
   function checkLogin(req, res, next) {
-    
-    console.log(app.locals.user);
-
-    if (!app.locals.user) {
+    console.log('user: ' + req.session.user);
+    if (!req.session.user) {
       app.locals.error = '未登录!'; 
       res.redirect('/login');
     }
@@ -294,22 +316,12 @@ app.get('/remove/:name/:day/:title',checkLogin, function (req, res) {
   }
 
   function checkNotLogin(req, res, next) {
-    if (app.locals.user) {
-      app.locals.error = '已登录!'; 
+    if (req.session.user) {
+      req.locals.error = '已登录!'; 
       res.redirect('back');
     }
     next();
   }
-
-
-function setError(err){
-  app.locals.error = err;
-}
-
-function setStatus(stat){
-  app.locals.status = stat;
-}
-
 }
 
 // module.exports = function(app){

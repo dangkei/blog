@@ -1,9 +1,10 @@
 var mongodb = require('./db'),
     markdown = require('markdown').markdown;
 
-function Post(name, title, post) {
+function Post(name, title,tags, post) {
   this.name = name;
   this.title = title;
+  this.tags = tags;
   this.post = post;
   this.comments = [];
 }
@@ -22,11 +23,14 @@ Post.prototype.save = function(callback) {
   }
   //要存入数据库的文档
   var post = {
+  	  Guid: Guid(),
       name: this.name,
       time: time,
       title: this.title,
+      tags:this.tags,
       post: this.post,
-      comments:[]
+      comments:[],
+      pv:0
   };
   //打开数据库
   mongodb.open(function (err, db) {
@@ -55,7 +59,7 @@ Post.prototype.save = function(callback) {
 
 //获取一篇文章
 //Post.getOne ：根据用户名、发表日期及文章名精确获取一篇文章
-Post.getOne = function(name, day, title, callback) {
+Post.getOne = function(name, day, Guid, callback) {
   //打开数据库
   mongodb.open(function (err, db) {
     if (err) {
@@ -71,14 +75,29 @@ Post.getOne = function(name, day, title, callback) {
       collection.findOne({
         "name": name,
         "time.day": day,
-        "title": title
-      }, function (err, doc) {
-        mongodb.close();
+        "Guid": Guid
+      }, function (err, doc) {      	
         if (err) {
-          return callback(err);
+            mongodb.close();
+            return callback(err);
         }
+        //每访问一次,pv增加1
+        if(doc){
+        	collection.update({
+        		"name":name,
+        		"time.day":day,
+        		"Guid":Guid
+        	},{
+        		$inc:{"pv":1}
+        	},function(err){
+        		mongodb.close();
+        		if(err){
+        			return callback(err);
+        		}
+        	});
+        
         //解析 markdown 为 html
-        if (doc) {
+      
 		  doc.post = markdown.toHTML(doc.post);
 		  if(doc.comments){
 		  	doc.comments.forEach(function (comment) {
@@ -294,3 +313,40 @@ Post.getArchive = function(callback) {
     });
   });
 };
+//返回通过标题关键字查询的所有文章信息
+Post.search = function(keyword, callback) {
+  mongodb.open(function (err, db) {
+    if (err) {
+      return callback(err);
+    }
+    db.collection('posts', function (err, collection) {
+      if (err) {
+        mongodb.close();
+        return callback(err);
+      }
+      var pattern = new RegExp(keyword, "i");
+      collection.find({
+        "title": pattern
+      }, {
+      	"Guid": 1,
+        "name": 1,
+        "time": 1,
+        "title": 1
+      }).sort({
+        time: -1
+      }).toArray(function (err, docs) {
+        mongodb.close();
+        if (err) {
+         return callback(err);
+        }
+        callback(null, docs);
+      });
+    });
+  });
+};
+function Guid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+        return v.toString(16);
+    });
+}
