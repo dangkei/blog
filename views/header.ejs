@@ -29,22 +29,29 @@ nav.right{
 <ul class='nav navbar-nav'>
     <li class='navbar-text'><a title="主页"  href="/">首页</a></li>
     <li class='navbar-text'><a href="/archive">博文</a></li>
+    <li class='navbar-text'><a href="/tags">标签</a></li>
+    <li class='navbar-search'><form action="/search" method="GET"><input class="navbar-search" type="text" name="keyword" placeholder="SEARCH" class="search" /></form></li>
+</ul>
+</div>
+<div style="border:1px">
+<ul class='userinfo'>
 <% if (user) { %>
-    <li class='navbar-text'><a title="上传"  href="/upload">上传</a></li>
-    <li class='navbar-text'><a title="发表"  href="/post">发表</a></li>
-    <li class='navbar-text'><a title="登出"  href="/logout">登出</a></li>
+    <li ><a title="上传"  href="/upload">上传</a></li>
+    <li ><a title="发表"  href="/post">发表</a></li>
+    <li ><a title="登出"  href="/logout">登出</a></li>
+    <li ><a title="用户"  href="#">Welcome! <%= user.name%> | </a></li> 
 <% } else { %>
-    <li class='navbar-text'><a  href="/login">登录</a></li>
-    <li class='navbar-text'><a  href="/reg">立即注册</a></li>
+    <li ><a  href="/login">登录</a></li>
+    <li ><a  href="/reg">立即注册</a></li>
+<% } %>
+<% if (success) { %>
+  <li><%= success %> | </li>
+<% } %>
+<% if (error) { %>
+  <li><%= error %> | </li>
 <% } %>
 </ul>
 </div>
-<% if (success) { %>
-  <div><%= success %></div>
-<% } %>
-<% if (error) { %>
-  <div><%= error %> </div>
-<% } %>
-<span><form action="/search" method="GET"><input type="text" name="keyword" placeholder="SEARCH" class="search" /></form></span>
+
 <br/>
 <article>

@@ -43,14 +43,8 @@ app.use(flash());
 app.use(express.static(path.join(__dirname, 'public')));
 //app.use('/', routes);
 
-
 routers(app);
-app.use(function (req, res, next) {
-    res.locals.error = req.flash('error');
-    res.locals.success = req.flash('success');
-    res.locals.user = req.session.user;
-    next();
-});
+
 //app.use(express.session());
 //store session database
 app.use(session({
@@ -62,7 +56,7 @@ app.use(session({
     host: settings.host,
     port: settings.port
   }),
-  resave:true,
+  resave:false,
   saveUninitialized:true
 }));
 
@@ -73,7 +67,6 @@ app.use(function(req, res, next) {
   next(err);
 });
 
-// error handlers
 
 // development error handler
 // will print stacktrace
@@ -84,16 +77,17 @@ if (app.get('env') === 'development') {
       message: err.message,
       error: err
     });
+    next(err);
   });
 }
 
 // production error handler
 // no stacktraces leaked to user
-app.use(function(err, req, res, next) {
-  res.status(err.status || 500);
-  res.render('error', {
-    message: err.message,
-    error: {}
-  });
-});
+// app.use(function(err, req, res, next) {
+//   res.status(err.status || 500);
+//   res.render('error', {
+//     message: err.message,
+//     error: err
+//   });
+// });
 module.exports = app;

@@ -194,7 +194,7 @@ Post.getN = function(name, page, number, callback) {
 };
 
 //返回原始发表的内容（markdown 格式）
-Post.edit = function(name, day, title, callback) {
+Post.edit = function(name, day, Guid, callback) {
   //打开数据库
   mongodb.open(function (err, db) {
     if (err) {
@@ -207,10 +207,10 @@ Post.edit = function(name, day, title, callback) {
         return callback(err);
       }
       //根据用户名、发表日期及文章名进行查询
-      collection.findOne({
+    collection.findOne({
         "name": name,
         "time.day": day,
-        "title": title
+        "Guid": Guid
       }, function (err, doc) {
         mongodb.close();
         if (err) {
@@ -223,7 +223,7 @@ Post.edit = function(name, day, title, callback) {
 };
 
 //更新一篇文章及其相关信息
-Post.update = function(name, day, title, post, callback) {
+Post.update = function(Guid, post, tags, callback) {
   //打开数据库
   mongodb.open(function (err, db) {
     if (err) {
@@ -237,11 +237,12 @@ Post.update = function(name, day, title, post, callback) {
       }
       //更新文章内容
       collection.update({
-        "name": name,
-        "time.day": day,
-        "title": title
+        "Guid": Guid
       }, {
-        $set: {post: post}
+        $set: {
+          post: post,
+          tags:tags,
+        }
       }, function (err) {
         mongodb.close();
         if (err) {
@@ -253,7 +254,7 @@ Post.update = function(name, day, title, post, callback) {
   });
 };
 
-Post.remove = function(name, day, title, callback) {
+Post.remove = function(Guid, callback) {
   //打开数据库
   mongodb.open(function (err, db) {
     if (err) {
@@ -267,9 +268,7 @@ Post.remove = function(name, day, title, callback) {
       }
       //根据用户名、日期和标题查找并删除一篇文章
       collection.remove({
-        "name": name,
-        "time.day": day,
-        "title": title
+        "Guid": Guid
       }, {
         w: 1
       }, function (err) {
@@ -277,7 +276,7 @@ Post.remove = function(name, day, title, callback) {
         if (err) {
           return callback(err);
         }
-        callback(null);
+        callback(null,{});
       });
     });
   });
@@ -298,6 +297,7 @@ Post.getArchive = function(callback) {
       }
       //返回只包含 name、time、title 属性的文档组成的存档数组
       collection.find({}, {
+      	"Guid": 1,
         "name": 1,
         "time": 1,
         "title": 1
@@ -344,6 +344,62 @@ Post.search = function(keyword, callback) {
     });
   });
 };
+
+//取得所有的标签分类
+Post.getTags =function(callback){
+  mongodb.open(function(err,db){
+    if(err){
+      return callback(err);
+    }
+    db.collection('posts',function(err,collection){
+      if (err) {
+        mongodb.close();
+        callback(err);
+      };
+      //distinct 找出不重复的值
+      collection.distinct('tags',function(err,docs){
+        mongodb.close();
+        if(err){
+          return callback(err);
+        }
+        callback(null,docs);
+      });
+    });
+  });
+};
+
+//取得包含指定标签的所有文档
+Post.getTag = function(tag,callback){
+  mongodb.open(function(err,db){
+    if(err){
+      return callback(err);
+    }
+    db.collection('posts',function(err,collection){
+      if(err){
+        return callback(err);
+      }
+      collection.find({
+        "tags":tag
+      },{
+        "Guid":1,
+        "name":1,
+        "time":1,
+        "title":1
+      }).sort({
+          time:-1
+        }).toArray(function(err,docs){
+          mongodb.close();
+          if (err) {
+            return callback(err);
+          }
+          callback(null,docs);
+      });  
+    });
+  });
+};
+
+
+//生成一个Guid
 function Guid() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
